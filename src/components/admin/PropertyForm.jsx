@@ -32,6 +32,7 @@ function emptyPropertyForm() {
     isNewDevelopment: false,
     featured: false,
     launchStatus: '',
+    propertyVisibility: '',
     cashbackEligible: false,
     amenitiesText: '',
     landmarksText: '',
@@ -72,6 +73,16 @@ function landmarksToText(landmarks) {
     .join('\n')
 }
 
+function reorderItems(list, fromIndex, toIndex) {
+  if (!Array.isArray(list)) return []
+  if (fromIndex === toIndex) return list
+  if (fromIndex < 0 || toIndex < 0 || fromIndex >= list.length || toIndex >= list.length) return list
+  const next = [...list]
+  const [moved] = next.splice(fromIndex, 1)
+  next.splice(toIndex, 0, moved)
+  return next
+}
+
 function propertyToFormState(p) {
   const row = normalizeProperty(p)
   let deliveryDate = ''
@@ -107,6 +118,7 @@ function propertyToFormState(p) {
     isNewDevelopment: Boolean(row.isNewDevelopment),
     featured: Boolean(row.featured),
     launchStatus: row.launchStatus ?? '',
+    propertyVisibility: row.propertyVisibility ?? '',
     cashbackEligible: Boolean(row.cashbackEligible),
     amenitiesText: Array.isArray(row.amenities) ? row.amenities.join('\n') : '',
     landmarksText: landmarksToText(row.nearbyLandmarks),
@@ -146,6 +158,7 @@ function appendPayload(fd, form) {
   fd.append('isNewDevelopment', form.isNewDevelopment ? '1' : '0')
   fd.append('featured', form.featured ? '1' : '0')
   fd.append('launchStatus', form.launchStatus.trim())
+  fd.append('propertyVisibility', form.propertyVisibility.trim())
   fd.append('cashbackEligible', form.cashbackEligible ? '1' : '0')
   fd.append('amenitiesText', form.amenitiesText)
   fd.append('landmarksText', form.landmarksText)
@@ -158,26 +171,27 @@ function appendPayload(fd, form) {
 }
 
 const fieldClass =
-  'w-full rounded-xl border border-[#d1d5db] bg-white px-4 py-3 text-[15px] leading-snug text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-100 disabled:text-slate-500'
+  'h-12 w-full rounded-[var(--radius-sm)] border border-slate-200 bg-white px-[18px] py-[14px] text-[15px] font-normal leading-snug text-slate-900 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 transition-all duration-300 hover:border-slate-300 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-100 disabled:text-slate-500'
 
 const fieldClassTitle =
-  'w-full rounded-xl border-2 border-amber-200/90 bg-white px-4 py-3.5 text-lg font-semibold tracking-tight text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-100'
+  'h-12 w-full rounded-[var(--radius-sm)] border border-slate-200 bg-white px-[18px] py-[14px] text-[15px] font-normal tracking-normal text-slate-900 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 transition-all duration-300 hover:border-slate-300 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-100'
 
 const fieldClassPrice =
-  'w-full rounded-xl border-2 border-amber-200/90 bg-white px-4 py-3.5 text-lg font-semibold tabular-nums tracking-tight text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-100'
+  'h-12 w-full rounded-[var(--radius-sm)] border border-slate-200 bg-white px-[18px] py-[14px] text-[15px] font-normal tabular-nums tracking-normal text-slate-900 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 transition-all duration-300 hover:border-slate-300 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-stone-100'
 
-const labelClass = 'mb-1.5 block text-sm font-semibold text-slate-800'
+const labelClass = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-600'
+const requiredMarkClass = 'ml-1 text-rose-600'
 
 const sectionCardClass =
-  'rounded-2xl border border-stone-200/90 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_28px_rgba(15,23,42,0.07)] md:p-8'
+  'rounded-[var(--radius-md)] border border-slate-200 bg-white p-5 shadow-[var(--shadow-prestige)] sm:p-6 md:p-8'
 
 const sectionHeadingClass = 'mb-5 text-xs font-bold uppercase tracking-[0.14em] text-slate-500'
 
 const fileInputClass =
-  'w-full rounded-xl border border-[#d1d5db] bg-stone-50/50 px-3 py-2 text-sm text-slate-800 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-3 file:text-sm file:font-semibold file:text-white file:shadow-md file:transition file:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60'
+  'w-full rounded-[var(--radius-sm)] border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 transition-colors duration-300 hover:border-slate-300 file:mr-4 file:cursor-pointer file:rounded-[var(--radius-sm)] file:border-0 file:bg-slate-700 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white file:shadow-[var(--shadow-md)] file:transition file:duration-300 file:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60'
 
 const submitButtonClass =
-  'inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-4 text-base font-bold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/35 focus:ring-offset-2 focus:ring-offset-[#f4f2ed] disabled:cursor-not-allowed disabled:opacity-60'
+  'inline-flex h-12 w-full items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-slate-700 px-7 text-sm font-semibold uppercase tracking-[0.05em] text-white shadow-[var(--shadow-md)] transition-all duration-300 hover:bg-slate-800 hover:shadow-[var(--shadow-lg)] focus:outline-none focus:ring-4 focus:ring-slate-900/10 disabled:cursor-not-allowed disabled:opacity-60'
 
 const errTextClass = 'mt-1.5 text-sm font-medium text-rose-700'
 
@@ -231,6 +245,8 @@ export function PropertyForm() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
+  const [dragExistingIndex, setDragExistingIndex] = useState(null)
+  const [dragNewIndex, setDragNewIndex] = useState(null)
 
   useEffect(() => {
     return () => {
@@ -266,6 +282,8 @@ export function PropertyForm() {
         setFloorPlanPreviewUrls([])
         setBrochureFile(null)
         setFieldErrors({})
+        setDragExistingIndex(null)
+        setDragNewIndex(null)
       } catch {
         if (!cancelled) setFetchError('Failed to load property. Check the link or try again.')
       } finally {
@@ -293,6 +311,19 @@ export function PropertyForm() {
       delete next.images
       return next
     })
+  }
+
+  const handleExistingImageDrop = (toIndex) => {
+    if (dragExistingIndex == null) return
+    setExistingImages((prev) => reorderItems(prev, dragExistingIndex, toIndex))
+    setDragExistingIndex(null)
+  }
+
+  const handleNewImageDrop = (toIndex) => {
+    if (dragNewIndex == null) return
+    setFiles((prev) => reorderItems(prev, dragNewIndex, toIndex))
+    setPreviewUrls((prev) => reorderItems(prev, dragNewIndex, toIndex))
+    setDragNewIndex(null)
   }
 
   const handleFloorPlanFilesChange = (e) => {
@@ -337,6 +368,7 @@ export function PropertyForm() {
       setSubmitting(true)
       const fd = new FormData()
       appendPayload(fd, form)
+      if (isEdit) fd.append('imageOrder', JSON.stringify(existingImages))
       files.forEach((f) => fd.append('images', f))
       floorPlanFiles.forEach((f) => fd.append('floorPlans', f))
       if (brochureFile) fd.append('brochure', brochureFile)
@@ -390,12 +422,15 @@ export function PropertyForm() {
 
   return (
     <div className="space-y-6">
-      {import.meta.env.VITE_API_BASE_URL ? (
+      {/* {import.meta.env.VITE_API_BASE_URL ? (
         <p className="text-xs font-medium text-slate-500">{import.meta.env.VITE_API_BASE_URL}</p>
-      ) : null}
+      ) : null} */}
       <p className="max-w-2xl border-l-[3px] border-amber-400/90 pl-4 text-sm leading-relaxed text-slate-600">
         Title, price, location, and at least one image are required. Use multiline fields for amenities and landmarks as
         described below.
+      </p>
+      <p className="text-xs font-medium text-slate-600">
+        Fields marked with <span className={requiredMarkClass}>*</span> are mandatory.
       </p>
 
       {submitError ? (
@@ -413,7 +448,7 @@ export function PropertyForm() {
           <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
             <div className="md:col-span-2">
               <label className={labelClass} htmlFor="property-title">
-                Title *
+                Title<span className={requiredMarkClass}>*</span>
               </label>
               <input
                 id="property-title"
@@ -428,12 +463,13 @@ export function PropertyForm() {
                 className={fieldClassTitle}
                 autoComplete="off"
                 aria-invalid={Boolean(fieldErrors.title)}
+                required
               />
               {fieldErrors.title ? <p className={errTextClass}>{fieldErrors.title}</p> : null}
             </div>
             <div>
               <label className={labelClass} htmlFor="property-price">
-                List price (INR) *
+                List price (INR)<span className={requiredMarkClass}>*</span>
               </label>
               <input
                 id="property-price"
@@ -448,6 +484,7 @@ export function PropertyForm() {
                 disabled={formDisabled}
                 className={fieldClassPrice}
                 aria-invalid={Boolean(fieldErrors.price)}
+                required
               />
               {fieldErrors.price ? <p className={errTextClass}>{fieldErrors.price}</p> : null}
             </div>
@@ -501,7 +538,9 @@ export function PropertyForm() {
               />
             </div>
             <div className="md:col-span-2">
-              <label className={labelClass}>Location (short) *</label>
+              <label className={labelClass}>
+                Location (short)<span className={requiredMarkClass}>*</span>
+              </label>
               <input
                 type="text"
                 value={form.location}
@@ -513,6 +552,7 @@ export function PropertyForm() {
                 disabled={formDisabled}
                 className={fieldClass}
                 aria-invalid={Boolean(fieldErrors.location)}
+                required
               />
               {fieldErrors.location ? <p className={errTextClass}>{fieldErrors.location}</p> : null}
             </div>
@@ -586,21 +626,20 @@ export function PropertyForm() {
                 <option value="">None</option>
                 <option value="New Launch">New Launch</option>
                 <option value="Ready to Move">Ready to Move</option>
-                <option value="Exclusive">Exclusive</option>
+                {/* <option value="Exclusive">Exclusive</option> */}
                 <option value="Under Construction">Under Construction</option>
               </select>
             </div>
             <div>
-              <label className={labelClass}>Exclusive</label>
+              <label className={labelClass}>Property Visibility</label>
               <select
-                value={form.launchStatus}
-                onChange={(e) => setForm((s) => ({ ...s, launchStatus: e.target.value }))}
+                value={form.propertyVisibility}
+                onChange={(e) => setForm((s) => ({ ...s, propertyVisibility: e.target.value }))}
                 disabled={formDisabled}
                 className={fieldClass}
               >
                 <option value="">None</option>
                 <option value="Exclusive">Exclusive</option>
-                <option value="Under Construction">Under Construction</option>
               </select>
             </div>
           </div>
@@ -952,6 +991,7 @@ export function PropertyForm() {
 
         <div className={sectionCardClass}>
           <div className={sectionHeadingClass}>Gallery images</div>
+          <p className="mb-3 text-xs text-slate-600">Drag and drop image cards to set display order.</p>
           {existingImages.length ? (
             <div className="mb-4">
               <p className="mb-2 text-sm font-medium text-slate-700">Current gallery</p>
@@ -959,16 +999,27 @@ export function PropertyForm() {
                 {existingImages.map((url, idx) => (
                   <div
                     key={url + String(idx)}
-                    className="aspect-[4/3] overflow-hidden rounded-xl border border-[#d1d5db] bg-stone-50 shadow-sm"
+                    className="group relative aspect-[4/3] cursor-move overflow-hidden rounded-xl border border-[#d1d5db] bg-stone-50 shadow-sm"
+                    draggable
+                    onDragStart={() => setDragExistingIndex(idx)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => handleExistingImageDrop(idx)}
+                    onDragEnd={() => setDragExistingIndex(null)}
                   >
                     <img src={url} alt={`Existing ${idx + 1}`} className="h-full w-full object-cover" loading="lazy" />
+                    <span className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">
+                      {idx + 1}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           ) : null}
           <div className="space-y-2">
-            <label className={labelClass}>{isEdit ? 'Add more images (optional)' : 'Images (up to 10) *'}</label>
+            <label className={labelClass}>
+              {isEdit ? 'Add more images (optional)' : 'Images (up to 10)'}
+              {!isEdit ? <span className={requiredMarkClass}>*</span> : null}
+            </label>
             <input
               type="file"
               name="images"
@@ -990,9 +1041,17 @@ export function PropertyForm() {
               {previewUrls.map((u, idx) => (
                 <div
                   key={u + String(idx)}
-                  className="aspect-[4/3] overflow-hidden rounded-xl border border-[#d1d5db] bg-stone-50 shadow-sm"
+                  className="relative aspect-[4/3] cursor-move overflow-hidden rounded-xl border border-[#d1d5db] bg-stone-50 shadow-sm"
+                  draggable
+                  onDragStart={() => setDragNewIndex(idx)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => handleNewImageDrop(idx)}
+                  onDragEnd={() => setDragNewIndex(null)}
                 >
                   <img src={u} alt={`preview-${idx + 1}`} className="h-full w-full object-cover" />
+                  <span className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">
+                    {idx + 1}
+                  </span>
                 </div>
               ))}
             </div>

@@ -71,9 +71,6 @@ export function AdminPropertyListPage() {
           <p className="max-w-2xl text-[15px] leading-relaxed text-slate-600">
             Manage listings shown on the public site. Create, edit, or remove properties.
           </p>
-          {import.meta.env.VITE_API_BASE_URL ? (
-            <p className="text-xs font-medium text-slate-500">{import.meta.env.VITE_API_BASE_URL}</p>
-          ) : null}
         </div>
         <Link
           to="/admin/properties/new"
