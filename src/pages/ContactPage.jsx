@@ -1,18 +1,11 @@
 ﻿import { ContactForm } from '../components/ContactForm'
+import { buildPayload } from '../utils/formPayload'
 import '../styles/contact.css'
 
 export function ContactPage() {
   const submitContactForm = async (form) => {
   try {
-    const payload = {
-      ...form,
-      name: String(form?.name || '').trim(),
-      email: String(form?.email || '').trim(),
-      phone: String(form?.phone || '').trim(),
-      message: String(form?.message || '').trim(),
-      date: String(form?.date || '').trim(),
-      time: String(form?.time || '').trim(),
-    }
+    const payload = buildPayload(form, ['name', 'phone', 'email', 'message'])
 
     const response = await fetch(
       `${import.meta.env.VITE_API_BASE_URL}/api/contact`,

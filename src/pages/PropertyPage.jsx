@@ -19,6 +19,7 @@ import { ImageCarousel } from '../components/ImageCarousel'
 import { WhatsAppButton } from '../components/WhatsAppButton'
 import { formatPrice } from '../data/properties'
 import { api, normalizeProperty } from '../services/api'
+import { buildPayload } from '../utils/formPayload'
 
 const WA_PHONE = '+919080895163'
 
@@ -147,22 +148,25 @@ export function PropertyPage() {
       setBrochureSubmitting(true)
       setBrochureErr('')
       const name = brochureName.trim()
-      const mobile = normalizeMobile(brochureMobile)
+      const phone = normalizeMobile(brochureMobile)
 
       if (!name) {
         setBrochureErr('Please enter your name.')
         return
       }
-      if (!/^\d{10}$/.test(mobile)) {
+      if (!/^\d{10}$/.test(phone)) {
         setBrochureErr('Please enter a valid 10-digit mobile number.')
         return
       }
-      const res = await api.post(`/api/property/${id}/brochure-lead`, {
+      const payload = buildPayload({
         name,
-        mobile,
-        propertyId: property?._id || id,
-        propertyTitle: property?.title || '',
-      })
+        phone,
+      }, ['name', 'phone'])
+      const requestPayload = {
+        name: payload.name,
+        mobile: payload.phone,
+      }
+      const res = await api.post(`/api/property/${id}/brochure-lead`, requestPayload)
       const downloadUrl = res?.data?.data?.downloadUrl
       if (!downloadUrl) {
         setBrochureErr('Unable to start download. Please try again.')
@@ -582,13 +586,29 @@ export function PropertyPage() {
                 compact
                 showDateTime
                 onSubmit={async (form) => {
-                  const payload = {
-                    ...form,
+                  const payload = buildPayload({
+                    name: form?.name,
+                    email: form?.email,
+                    phone: form?.phone,
+                    message: form?.message,
+                    date: form?.date,
+                    time: form?.time,
                     leadType: 'schedule_visit',
                     sheetName: 'Schedule a visit',
                     propertyId: id,
                     propertyTitle: property?.title || '',
-                  }
+                  }, [
+                    'name',
+                    'email',
+                    'phone',
+                    'message',
+                    'date',
+                    'time',
+                    'leadType',
+                    'sheetName',
+                    'propertyId',
+                    'propertyTitle',
+                  ])
                   const response = await api.post('/api/contact', payload)
                   if (!response?.data?.success) {
                     throw new Error('Failed to submit schedule request')

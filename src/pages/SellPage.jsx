@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
+import { buildPayload } from '../utils/formPayload'
 import '../styles/sell.css'
 
 export function SellPage() {
   const [status, setStatus] = useState('idle')
-  const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', propertyDetails: '' })
 
   const canSubmit = useMemo(
     () =>
@@ -13,7 +14,7 @@ export function SellPage() {
         form.name.trim() &&
         form.email.trim() &&
         form.phone.trim() &&
-        form.message.trim()
+        form.propertyDetails.trim()
       ) && status !== 'loading',
     [form, status]
   )
@@ -23,14 +24,14 @@ export function SellPage() {
     if (!canSubmit) return
     setStatus('loading')
 
-    const payload = {
-      name: String(form.name || '').trim(),
-      email: String(form.email || '').trim(),
-      phone: String(form.phone || '').trim(),
-      message: String(form.message || '').trim(),
+    const payload = buildPayload({
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      propertyDetails: form.propertyDetails,
       leadType: 'sell_property',
       sheetName: 'Sell Your Property',
-    }
+    }, ['name', 'email', 'phone', 'propertyDetails', 'leadType', 'sheetName'])
 
     const promise = fetch(`${import.meta.env.VITE_API_BASE_URL}/api/contact`, {
       method: 'POST',
@@ -63,7 +64,7 @@ export function SellPage() {
     try {
       await promise
       setStatus('success')
-      setForm({ name: '', email: '', phone: '', message: '' })
+      setForm({ name: '', email: '', phone: '', propertyDetails: '' })
     } catch (err) {
       console.error(err)
       setStatus('error')
@@ -173,8 +174,8 @@ export function SellPage() {
                     required
                   />
                   <textarea
-                    value={form.message}
-                    onChange={(e) => setForm((s) => ({ ...s, message: e.target.value }))}
+                    value={form.propertyDetails}
+                    onChange={(e) => setForm((s) => ({ ...s, propertyDetails: e.target.value }))}
                     placeholder="Property details (location, size, features, etc.)"
                     rows={4}
                     className="sell-section__input sell-section__textarea"

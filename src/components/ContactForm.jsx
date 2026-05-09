@@ -22,15 +22,28 @@ export function ContactForm({
   compact = false,
 }) {
   const [status, setStatus] = useState('idle')
-  const [form, setForm] = useState({ name: '', email: '', phone: '', message: '', date: '', time: '' })
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: '',
+  })
+  const [scheduleForm, setScheduleForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: '',
+    date: '',
+    time: '',
+  })
 
   const today = new Date().toISOString().split("T")[0];
 
 const filteredTimeSlots = useMemo(() => {
-  if (!form.date) return TIME_SLOTS;
+  if (!scheduleForm.date) return TIME_SLOTS;
 
   // If not today → allow all
-  if (form.date !== today) return TIME_SLOTS;
+  if (scheduleForm.date !== today) return TIME_SLOTS;
 
   const now = new Date();
 
@@ -46,17 +59,27 @@ const filteredTimeSlots = useMemo(() => {
 
     return slotDate > now;
   });
-}, [form.date]);
+}, [scheduleForm.date, today]);
+
+  const activeForm = showDateTime ? scheduleForm : contactForm
 
   const canSubmit = useMemo(
     () =>
       Boolean(
-        form.name.trim() &&
-        form.phone.trim() 
+        activeForm.name.trim() &&
+        activeForm.phone.trim() 
         // (!showDateTime || (form.date && form.time))
       ) && status !== 'loading',
-    [form, status]
+    [activeForm, status]
   )
+
+  const updateField = (field, value) => {
+    if (showDateTime) {
+      setScheduleForm((prev) => ({ ...prev, [field]: value }))
+      return
+    }
+    setContactForm((prev) => ({ ...prev, [field]: value }))
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -64,7 +87,7 @@ const filteredTimeSlots = useMemo(() => {
     setStatus('loading')
 
     const promise = onSubmit
-      ? onSubmit(form)
+      ? onSubmit(activeForm)
       : new Promise((res) => setTimeout(res, 1000))
 
       promise
@@ -78,7 +101,11 @@ const filteredTimeSlots = useMemo(() => {
     try {
       await promise
       setStatus('success')
-      setForm({ name: '', email: '', phone: '', message: '', date: '', time: '' })
+      if (showDateTime) {
+        setScheduleForm({ name: '', email: '', phone: '', message: '', date: '', time: '' })
+      } else {
+        setContactForm({ name: '', email: '', phone: '', message: '' })
+      }
     } catch (err) {
       console.error(err)
       setStatus('error')
@@ -91,30 +118,30 @@ const filteredTimeSlots = useMemo(() => {
     <form onSubmit={submit} className="space-y-4">
       <div className="space-y-3">
         <input
-          value={form.name}
-          onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+          value={activeForm.name}
+          onChange={(e) => updateField('name', e.target.value)}
           placeholder="Full name *"
           className="luxury-input text-sm"
           required
         />
         <input
-          value={form.email}
-          onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+          value={activeForm.email}
+          onChange={(e) => updateField('email', e.target.value)}
           placeholder="Email address"
           type="email"
           className="luxury-input text-sm"
         />
         <input
-          value={form.phone}
-          onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
+          value={activeForm.phone}
+          onChange={(e) => updateField('phone', e.target.value)}
           placeholder="Phone number *"
           type="tel"
           className="luxury-input text-sm"
           required
         />
         <textarea
-          value={form.message}
-          onChange={(e) => setForm((s) => ({ ...s, message: e.target.value }))}
+          value={activeForm.message}
+          onChange={(e) => updateField('message', e.target.value)}
           placeholder="Your message (optional)"
           rows={compact ? 3 : 4}
           className="luxury-input resize-none text-sm"
@@ -123,14 +150,14 @@ const filteredTimeSlots = useMemo(() => {
           <div className="grid gap-3 sm:grid-cols-2">
             <input
               type="date"
-              value={form.date}
+              value={scheduleForm.date}
               min={new Date().toISOString().split("T")[0]}
-              onChange={(e) => setForm((s) => ({ ...s, date: e.target.value }))}
+              onChange={(e) => setScheduleForm((s) => ({ ...s, date: e.target.value }))}
               className="luxury-input text-sm"
             />
             <select
-              value={form.time}
-              onChange={(e) => setForm((s) => ({ ...s, time: e.target.value }))}
+              value={scheduleForm.time}
+              onChange={(e) => setScheduleForm((s) => ({ ...s, time: e.target.value }))}
               className="luxury-input text-sm"
             >
               <option value="">Select time</option>
