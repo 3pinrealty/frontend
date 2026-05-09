@@ -1,11 +1,25 @@
 ﻿import { ContactForm } from '../components/ContactForm'
-import { buildPayload } from '../utils/formPayload'
 import '../styles/contact.css'
+
+const sanitizePayload = (payload) =>
+  Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => {
+      if (value == null) return false
+      if (typeof value === 'string') return value.trim() !== ''
+      return true
+    }).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
+  )
 
 export function ContactPage() {
   const submitContactForm = async (form) => {
   try {
-    const payload = buildPayload(form, ['name', 'phone', 'email', 'message'])
+    const contactPayload = sanitizePayload({
+      name: form?.name,
+      phone: form?.phone,
+      email: form?.email,
+      message: form?.message,
+      sheetName: 'Contact',
+    })
 
     const response = await fetch(
       `${import.meta.env.VITE_API_BASE_URL}/api/contact`,
@@ -14,7 +28,7 @@ export function ContactPage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(contactPayload)
       }
     );
 

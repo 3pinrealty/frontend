@@ -1,8 +1,16 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
-import { buildPayload } from '../utils/formPayload'
 import '../styles/sell.css'
+
+const sanitizePayload = (payload) =>
+  Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => {
+      if (value == null) return false
+      if (typeof value === 'string') return value.trim() !== ''
+      return true
+    }).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
+  )
 
 export function SellPage() {
   const [status, setStatus] = useState('idle')
@@ -24,21 +32,20 @@ export function SellPage() {
     if (!canSubmit) return
     setStatus('loading')
 
-    const payload = buildPayload({
+    const sellPayload = sanitizePayload({
       name: form.name,
       email: form.email,
       phone: form.phone,
       propertyDetails: form.propertyDetails,
-      leadType: 'sell_property',
       sheetName: 'Sell Your Property',
-    }, ['name', 'email', 'phone', 'propertyDetails', 'leadType', 'sheetName'])
+    })
 
     const promise = fetch(`${import.meta.env.VITE_API_BASE_URL}/api/contact`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(sellPayload),
     }).then(async (response) => {
       if (!response.ok) {
         let apiError = 'Failed to submit'
