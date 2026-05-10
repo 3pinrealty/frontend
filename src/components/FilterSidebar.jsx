@@ -50,29 +50,93 @@ function CheckboxGroup({ label, options, selected, onChange }) {
 }
 
 function NumberRangeInput({ minValue, maxValue, onMinChange, onMaxChange }) {
+  const BUDGET_OPTIONS = [
+    { label: '50L', value: 5_000_000 },
+    { label: '1 Cr', value: 10_000_000 },
+    { label: '1.5 Cr', value: 15_000_000 },
+    { label: '2 Cr', value: 20_000_000 },
+    { label: '2.5 Cr', value: 25_000_000 },
+    { label: '3 Cr', value: 30_000_000 },
+    { label: '3.5 Cr', value: 35_000_000 },
+    { label: '4 Cr', value: 40_000_000 },
+    { label: '4.5 Cr', value: 45_000_000 },
+    { label: '5 Cr', value: 50_000_000 },
+    { label: '5 Cr+', value: 50_000_000, openEnded: true },
+  ]
+
+  const selectedMin =
+    minValue == null || minValue === '' ? null : Number.isFinite(Number(minValue)) ? Number(minValue) : null
+  const selectedMax = maxValue && typeof maxValue === 'object' ? maxValue : null
+  const selectedMaxValue = selectedMax
+    ? Number(selectedMax.value)
+    : maxValue == null || maxValue === ''
+      ? null
+      : Number.isFinite(Number(maxValue))
+        ? Number(maxValue)
+        : null
+  const selectedMaxOpen = Boolean(selectedMax?.openEnded)
+
+  const minOptions = selectedMaxValue == null || selectedMaxOpen
+    ? BUDGET_OPTIONS
+    : BUDGET_OPTIONS.filter((o) => o.value <= selectedMaxValue)
+
+  const maxOptions = selectedMin == null
+    ? BUDGET_OPTIONS
+    : BUDGET_OPTIONS.filter((o) => o.value >= selectedMin)
+
+  const maxSelectValue = selectedMax
+    ? `${selectedMax.value}${selectedMax.openEnded ? '+' : ''}`
+    : selectedMaxValue == null
+      ? ''
+      : String(selectedMaxValue)
+
   return (
     <div className="space-y-2">
       <label className="text-xs font-semibold text-[var(--color-primary)] uppercase tracking-wider">
         Budget (INR)
       </label>
       <div className="flex items-center gap-2">
-        <input
-          type="number"
-          min={0}
-          value={minValue ?? ''}
-          onChange={(e) => onMinChange(e.target.value === '' ? null : Number(e.target.value))}
-          placeholder="Min"
+        <select
+          value={selectedMin == null ? '' : String(selectedMin)}
+          onChange={(e) => {
+            const raw = e.target.value
+            const nextMin = raw === '' ? null : Number(raw)
+            onMinChange(nextMin)
+          }}
           className="w-full rounded-sm border border-[var(--color-neutral-200)] bg-white px-3 py-2.5 text-sm text-[var(--color-primary)] placeholder:text-[var(--color-neutral-400)] focus:outline-none focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_rgba(198,168,75,0.15)] transition-all"
-        />
+        >
+          <option value="">Min</option>
+          {minOptions.map((option) => (
+            <option key={`min-${option.label}`} value={String(option.value)}>
+              {option.label}
+            </option>
+          ))}
+        </select>
         <span className="text-[var(--color-neutral-400)] text-xs">–</span>
-        <input
-          type="number"
-          min={0}
-          value={maxValue ?? ''}
-          onChange={(e) => onMaxChange(e.target.value === '' ? null : Number(e.target.value))}
-          placeholder="Max"
+        <select
+          value={maxSelectValue}
+          onChange={(e) => {
+            const raw = e.target.value
+            if (raw === '') {
+              onMaxChange(null)
+              return
+            }
+            const openEnded = raw.endsWith('+')
+            const value = Number(openEnded ? raw.slice(0, -1) : raw)
+            onMaxChange({ value, openEnded })
+          }}
           className="w-full rounded-sm border border-[var(--color-neutral-200)] bg-white px-3 py-2.5 text-sm text-[var(--color-primary)] placeholder:text-[var(--color-neutral-400)] focus:outline-none focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_rgba(198,168,75,0.15)] transition-all"
-        />
+        >
+          <option value="">Max</option>
+          {maxOptions.map((option) => (
+            <option
+              key={`max-${option.label}`}
+              value={`${option.value}${option.openEnded ? '+' : ''}`}
+            >
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   )
@@ -104,8 +168,27 @@ export function FilterSidebar({ filters, onChange, onApply, onReset, loading }) 
       <NumberRangeInput
         minValue={filters.minBudget}
         maxValue={filters.maxBudget}
-        onMinChange={(val) => update({ minBudget: val })}
-        onMaxChange={(val) => update({ maxBudget: val })}
+        onMinChange={(val) => {
+          const nextMin = val
+          const currentMaxObj = filters.maxBudget
+          if (!currentMaxObj || typeof currentMaxObj !== 'object') {
+            update({ minBudget: nextMin })
+            return
+          }
+          if (nextMin != null && Number(currentMaxObj.value) < Number(nextMin)) {
+            update({ minBudget: nextMin, maxBudget: null })
+            return
+          }
+          update({ minBudget: nextMin })
+        }}
+        onMaxChange={(val) => {
+          const nextMax = val
+          if (nextMax && filters.minBudget != null && Number(nextMax.value) < Number(filters.minBudget)) {
+            update({ maxBudget: null })
+            return
+          }
+          update({ maxBudget: nextMax })
+        }}
       />
 
       {/* Property Type Filter */}
@@ -153,7 +236,7 @@ export function FilterSidebar({ filters, onChange, onApply, onReset, loading }) 
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={onApply}
+          onClick={() => onApply?.(filters)}
           disabled={loading}
           className="flex-1 py-2.5 text-xs font-medium text-white bg-[var(--color-accent)] border border-[var(--color-accent)] rounded-sm hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
         >

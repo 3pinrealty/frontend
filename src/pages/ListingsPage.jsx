@@ -14,7 +14,14 @@ function buildQueryParams(filters) {
 
   if (filters.location) params.set('location', filters.location)
   if (filters.minBudget != null && filters.minBudget !== '') params.set('minBudget', String(filters.minBudget))
-  if (filters.maxBudget != null && filters.maxBudget !== '') params.set('maxBudget', String(filters.maxBudget))
+  if (filters.maxBudget && typeof filters.maxBudget === 'object') {
+    if (filters.maxBudget.value != null && filters.maxBudget.value !== '') {
+      params.set('maxBudget', String(filters.maxBudget.value))
+      if (filters.maxBudget.openEnded) params.set('maxBudgetOpen', '1')
+    }
+  } else if (filters.maxBudget != null && filters.maxBudget !== '') {
+    params.set('maxBudget', String(filters.maxBudget))
+  }
   if (filters.propertyType) params.set('type', filters.propertyType)
   if (filters.status?.length) params.set('status', filters.status.join(','))
   if (filters.bedrooms?.length) params.set('bedrooms', filters.bedrooms.join(','))
@@ -186,7 +193,10 @@ export function ListingsPage() {
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
-  const debounceTimer = useRef(null)
+  const [isMobileFilterView, setIsMobileFilterView] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 1024 : true,
+  )
+  const filtersRef = useRef(DEFAULT_FILTERS)
 
   const q = params.get('q') || ''
   const loc = params.get('loc') || ''
@@ -204,21 +214,40 @@ export function ListingsPage() {
 
   const handleFilterChange = (next) => {
     setFilters(next)
+    filtersRef.current = next
   }
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = (appliedFilters) => {
+    const nextFilters = appliedFilters || filtersRef.current
     setShowFilters(false)
-    clearTimeout(debounceTimer.current)
-    debounceTimer.current = setTimeout(() => fetchProperties(filters), 400)
+    fetchProperties(nextFilters)
   }
 
   const handleReset = () => {
     setFilters(DEFAULT_FILTERS)
+    filtersRef.current = DEFAULT_FILTERS
     fetchProperties(DEFAULT_FILTERS)
   }
 
   useEffect(() => {
     fetchProperties(filters)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const media = window.matchMedia('(max-width: 1023px)')
+    const sync = (event) => {
+      const nextMobile = Boolean(event.matches)
+      setIsMobileFilterView(nextMobile)
+      if (!nextMobile) setShowFilters(false)
+    }
+    sync(media)
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', sync)
+      return () => media.removeEventListener('change', sync)
+    }
+    media.addListener(sync)
+    return () => media.removeListener(sync)
   }, [])
 
   const unifiedQuery = q || loc
@@ -293,7 +322,10 @@ export function ListingsPage() {
 
               <div className="flex flex-wrap items-center gap-3">
                 <button
-                  onClick={() => setShowFilters(!showFilters)}
+                  onClick={() => {
+                    if (!isMobileFilterView) return
+                    setShowFilters((prev) => !prev)
+                  }}
                   className="luxury-button luxury-button-secondary properties-section__filter-button text-xs py-2.5 px-4"
                 >
                   <FunnelIcon className="w-4 h-4 mr-1.5" />
@@ -328,7 +360,7 @@ export function ListingsPage() {
             </aside>
 
             {/* Mobile Drawer */}
-            {showFilters && (
+            {isMobileFilterView && showFilters && (
               <>
                 <div
                   className="mobile-filter-backdrop"
@@ -359,7 +391,7 @@ export function ListingsPage() {
             )}
 
             {/* Property Grid */}
-            <div className={`flex-1 ${showFilters ? '' : 'w-full'}`}>
+            <div className={`flex-1 ${isMobileFilterView && showFilters ? '' : 'w-full'}`}>
               {loading && results.length === 0 ? (
                 <div className="flex items-center justify-center py-24">
                   <div className="w-8 h-8 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />

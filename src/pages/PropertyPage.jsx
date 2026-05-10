@@ -17,8 +17,16 @@ import {
 import { ContactForm } from '../components/ContactForm'
 import { ImageCarousel } from '../components/ImageCarousel'
 import { WhatsAppButton } from '../components/WhatsAppButton'
-import { formatPrice } from '../data/properties'
+import { formatPropertyDisplayPrice } from '../data/properties'
 import { api, normalizeProperty } from '../services/api'
+import {
+  handlePhonePaste,
+  isValidPhoneValue,
+  PHONE_PATTERN_ATTR,
+  PHONE_VALIDATION_MESSAGE,
+  sanitizePhoneInputValue,
+} from '../utils/phoneInput'
+import { toGoogleMapsEmbedUrl, toGoogleMapsOpenUrl } from '../utils/googleMapsEmbed'
 
 const WA_PHONE = '+919080895163'
 
@@ -42,6 +50,34 @@ function formatINRPlain(n) {
   return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Number(n))
 }
 
+function toPositiveNumber(v) {
+  if (v == null || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+function formatSqftRange(minValue, maxValue) {
+  const min = toPositiveNumber(minValue)
+  const max = toPositiveNumber(maxValue)
+  const minText = min != null ? formatINRPlain(min) : null
+  const maxText = max != null ? formatINRPlain(max) : null
+  if (minText && maxText) return `${minText} – ${maxText} sqft`
+  if (minText) return `${minText} sqft`
+  if (maxText) return `${maxText} sqft`
+  return null
+}
+
+function formatPricePerSqftRange(minValue, maxValue) {
+  const min = toPositiveNumber(minValue)
+  const max = toPositiveNumber(maxValue)
+  const minText = min != null ? formatINRPlain(min) : null
+  const maxText = max != null ? formatINRPlain(max) : null
+  if (minText && maxText) return `₹${minText} – ₹${maxText}`
+  if (minText) return `₹${minText}`
+  if (maxText) return `₹${maxText}`
+  return null
+}
+
 function isHttpUrl(s) {
   return typeof s === 'string' && /^https?:\/\//i.test(s.trim())
 }
@@ -59,12 +95,7 @@ function specChipsFromProperty(p, completionLabel) {
     { label: 'Completion', value: completionLabel },
     {
       label: 'Price / sqft',
-      value:
-        p.pricePerSqftMin != null && p.pricePerSqftMax != null
-          ? `₹${formatINRPlain(p.pricePerSqftMin)} – ₹${formatINRPlain(p.pricePerSqftMax)}`
-          : p.pricePerSqftMin != null
-            ? `₹${formatINRPlain(p.pricePerSqftMin)}`
-            : null,
+      value: formatPricePerSqftRange(p.pricePerSqftMin, p.pricePerSqftMax),
     },
     { label: 'Structure', value: p.structure || null },
     { label: 'Towers', value: p.towerCount != null ? `${p.towerCount} Towers` : null },
@@ -82,7 +113,8 @@ export function PropertyPage() {
   const [brochureName, setBrochureName] = useState('')
   const [brochureMobile, setBrochureMobile] = useState('')
   const [brochureSubmitting, setBrochureSubmitting] = useState(false)
-  const [brochureErr, setBrochureErr] = useState('')
+  const [brochureFieldErrors, setBrochureFieldErrors] = useState({ name: '', phone: '' })
+  const [brochureFormError, setBrochureFormError] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -140,7 +172,8 @@ export function PropertyPage() {
   }
 
   const openBrochureModal = () => {
-    setBrochureErr('')
+    setBrochureFieldErrors({ name: '', phone: '' })
+    setBrochureFormError('')
     setBrochureOpen(true)
   }
 
@@ -149,32 +182,42 @@ export function PropertyPage() {
     setBrochureOpen(false)
   }
 
-  const normalizeMobile = (v) => String(v ?? '').replace(/[^\d]/g, '').slice(-10)
-
   const submitBrochureLead = async () => {
+    setBrochureFieldErrors({ name: '', phone: '' })
+    setBrochureFormError('')
+
+    const name = brochureName.trim()
+    const phone = brochureMobile.trim()
+    const fe = { name: '', phone: '' }
+
+    if (!brochureName.trim()) {
+      fe.name = 'Name is required'
+    }
+    if (!phone) {
+      fe.phone = 'Phone Number is required'
+    } else if (!isValidPhoneValue(brochureMobile)) {
+      fe.phone = PHONE_VALIDATION_MESSAGE
+    }
+
+    if (fe.name || fe.phone) {
+      setBrochureFieldErrors(fe)
+      return
+    }
+
     try {
       setBrochureSubmitting(true)
-      setBrochureErr('')
-      const name = brochureName.trim()
-      const phone = normalizeMobile(brochureMobile)
-
-      if (!name) {
-        setBrochureErr('Please enter your name.')
-        return
-      }
-      if (!/^\d{10}$/.test(phone)) {
-        setBrochureErr('Please enter a valid 10-digit mobile number.')
-        return
-      }
       const brochurePayload = sanitizePayload({
         name,
         phone,
         sheetName: 'Brochure Leads',
+        propertyName: property?.title,
+        propertyLocation: property?.location,
+        propertyType: property?.type,
       })
       const res = await api.post(`/api/property/${id}/brochure-lead`, brochurePayload)
       const downloadUrl = res?.data?.data?.downloadUrl
       if (!downloadUrl) {
-        setBrochureErr('Unable to start download. Please try again.')
+        setBrochureFormError('Unable to start download. Please try again.')
         return
       }
 
@@ -185,8 +228,10 @@ export function PropertyPage() {
         `${import.meta.env.VITE_API_BASE_URL}${downloadUrl}`
       )
     } catch (e) {
-      const msg = e?.response?.data?.message || 'Unable to start download. Please try again.'
-      setBrochureErr(msg)
+      const msg =
+        (typeof e?.response?.data?.message === 'string' && e.response.data.message.trim()) ||
+        'Unable to start download. Please try again.'
+      setBrochureFormError(msg)
     } finally {
       setBrochureSubmitting(false)
     }
@@ -219,24 +264,29 @@ export function PropertyPage() {
     )
   }
 
-  const priceBar =
-    String(property.minPrice || '').trim() && String(property.maxPrice || '').trim()
-      ? `${formatPrice(property.minPrice, property.currency)} – ${formatPrice(property.maxPrice, property.currency)}`
-      : formatPrice(property.price, property.currency)
-  const priceBarWithRupee = priceBar && priceBar.includes('₹') ? priceBar : `₹ ${priceBar}`
+  const priceBar = formatPropertyDisplayPrice(property)
+  const priceBarWithRupee =
+    property.currency === 'INR' &&
+    priceBar !== '—' &&
+    !String(priceBar).startsWith('₹') &&
+    !String(priceBar).startsWith('Rs') &&
+    !String(priceBar).startsWith('INR')
+      ? `₹ ${priceBar}`
+      : priceBar
 
-  const sqftBar =
-    property.areaSqftMin != null && property.areaSqftMax != null
-      ? `${formatINRPlain(property.areaSqftMin)} – ${formatINRPlain(property.areaSqftMax)} sqft`
-      : property.areaSqm != null
-        ? `${property.areaSqm} m²`
-        : '—'
+  const sqftBar = formatSqftRange(property.areaSqftMin, property.areaSqftMax) || (property.areaSqm != null ? `${property.areaSqm} m²` : '—')
 
-  const mapIframeSrc =
-    (property.mapUrl && String(property.mapUrl).trim()) ||
-    (property.latitude != null && property.longitude != null
-      ? `https://maps.google.com/maps?q=${property.latitude},${property.longitude}&z=15&output=embed`
-      : '')
+  const rawMapUrl = property.mapUrl != null ? String(property.mapUrl).trim() : ''
+  const hasLatLngFields =
+    property.latitude != null &&
+    property.longitude != null &&
+    String(property.latitude).trim() !== '' &&
+    String(property.longitude).trim() !== ''
+  const mapEmbedSrc = toGoogleMapsEmbedUrl(property.mapUrl, property.latitude, property.longitude)
+  const mapOpenUrl = toGoogleMapsOpenUrl(property.mapUrl)
+  const hadMapIntent = Boolean(rawMapUrl) || hasLatLngFields
+  const showMapSection =
+    (property.nearbyLandmarks?.length ?? 0) > 0 || Boolean(rawMapUrl) || hasLatLngFields
 
   const ytId = property.youtubeUrl ? extractYouTubeVideoId(property.youtubeUrl) : null
   const specChips = specChipsFromProperty(property, completionDateLabel)
@@ -400,7 +450,7 @@ export function PropertyPage() {
               </section>
             ) : null}
 
-            {property.nearbyLandmarks?.length > 0 || mapIframeSrc ? (
+            {showMapSection ? (
               <section
                 id="property-map"
                 className="rounded-[var(--radius-md)] border border-[var(--color-neutral-200)] bg-[var(--color-secondary-200)] p-4 sm:p-5 lg:p-6"
@@ -453,11 +503,41 @@ export function PropertyPage() {
                   <div className="lg:basis-[60%] lg:max-w-[60%] flex-1 min-w-0">
                     <div className="relative isolate overflow-hidden rounded-xl border border-[var(--color-neutral-200)] bg-white">
                       <div className="h-[240px] sm:h-[260px] bg-[var(--color-secondary-200)]">
-                        {mapIframeSrc ? (
-                          <iframe title="Property location" src={mapIframeSrc} className="h-full w-full border-0" loading="lazy" />
+                        {mapEmbedSrc ? (
+                          <iframe
+                            title="Property location"
+                            src={mapEmbedSrc}
+                            className="h-full w-full border-0"
+                            loading="lazy"
+                            allowFullScreen
+                            referrerPolicy="no-referrer-when-downgrade"
+                          />
                         ) : (
-                          <div className="flex h-full items-center justify-center p-6">
-                            <p className="font-sans text-sm text-[var(--color-neutral-500)]">Map coming soon</p>
+                          <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                            {hadMapIntent ? (
+                              <>
+                                <p className="font-sans text-sm text-[var(--color-neutral-500)]">
+                                  Map preview isn&apos;t available for this link. Open the location in Google Maps
+                                  instead.
+                                </p>
+                                {mapOpenUrl ? (
+                                  <a
+                                    href={mapOpenUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-sans text-sm font-medium text-[var(--color-accent)] underline-offset-2 hover:underline"
+                                  >
+                                    Open in Google Maps
+                                  </a>
+                                ) : hasLatLngFields ? (
+                                  <p className="font-sans text-xs text-[var(--color-neutral-400)]">
+                                    Check latitude and longitude in admin, or add an embeddable map URL.
+                                  </p>
+                                ) : null}
+                              </>
+                            ) : (
+                              <p className="font-sans text-sm text-[var(--color-neutral-500)]">Map coming soon</p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -598,6 +678,10 @@ export function PropertyPage() {
                     message: form?.message,
                     date: form?.date,
                     time: form?.time,
+                    propertyId: id,
+                    propertyName: property?.title,
+                    propertyLocation: property?.location,
+                    propertyType: property?.type,
                     sheetName: 'Schedule a visit',
                   })
                   const response = await api.post('/api/contact', schedulePayload)
@@ -635,12 +719,19 @@ export function PropertyPage() {
                   </label>
                   <input
                     value={brochureName}
-                    onChange={(e) => setBrochureName(e.target.value)}
+                    onChange={(e) => {
+                      setBrochureFieldErrors((s) => ({ ...s, name: '' }))
+                      setBrochureName(e.target.value)
+                    }}
                     className="mt-1 w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-accent)]"
                     placeholder="Full name"
                     autoFocus
                     disabled={brochureSubmitting}
+                    aria-invalid={Boolean(brochureFieldErrors.name)}
                   />
+                  {brochureFieldErrors.name ? (
+                    <p className="mt-1 text-xs text-red-600">{brochureFieldErrors.name}</p>
+                  ) : null}
                 </div>
                 <div>
                   <label className="font-sans text-[11px] font-semibold uppercase tracking-wider text-[var(--color-neutral-500)]">
@@ -648,18 +739,34 @@ export function PropertyPage() {
                   </label>
                   <input
                     value={brochureMobile}
-                    onChange={(e) => setBrochureMobile(e.target.value)}
+                    onChange={(e) => {
+                      setBrochureFieldErrors((s) => ({ ...s, phone: '' }))
+                      setBrochureMobile(sanitizePhoneInputValue(e.target.value))
+                    }}
+                    onPaste={(e) => {
+                      setBrochureFieldErrors((s) => ({ ...s, phone: '' }))
+                      handlePhonePaste(e, (next) => setBrochureMobile(next))
+                    }}
                     className="mt-1 w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-accent)]"
-                    placeholder="10-digit mobile number"
-                    inputMode="numeric"
+                    placeholder="Phone number"
+                    type="tel"
+                    maxLength={20}
+                    pattern={PHONE_PATTERN_ATTR}
+                    title={PHONE_VALIDATION_MESSAGE}
                     disabled={brochureSubmitting}
+                    aria-invalid={Boolean(brochureFieldErrors.phone)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') submitBrochureLead()
                     }}
                   />
+                  {brochureFieldErrors.phone ? (
+                    <p className="mt-1 text-xs text-red-600">{brochureFieldErrors.phone}</p>
+                  ) : null}
                 </div>
 
-                {brochureErr ? <div className="text-sm text-red-600">{brochureErr}</div> : null}
+                {brochureFormError ? (
+                  <div className="text-sm text-red-600">{brochureFormError}</div>
+                ) : null}
 
                 <div className="flex items-center gap-2 pt-2">
                   <button

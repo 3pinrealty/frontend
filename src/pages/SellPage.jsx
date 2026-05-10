@@ -1,6 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'react-hot-toast'
 import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
+import {
+  handlePhonePaste,
+  isValidPhoneValue,
+  PHONE_PATTERN_ATTR,
+  PHONE_VALIDATION_MESSAGE,
+  sanitizePhoneInputValue,
+} from '../utils/phoneInput'
+import { isValidEmailFormat } from '../utils/formValidation'
 import '../styles/sell.css'
 
 const sanitizePayload = (payload) =>
@@ -12,24 +20,68 @@ const sanitizePayload = (payload) =>
     }).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value])
   )
 
+const emptySellErrors = () => ({
+  name: '',
+  email: '',
+  phone: '',
+  propertyDetails: '',
+})
+
+function validateSellForm(form) {
+  const e = emptySellErrors()
+  let bad = false
+
+  if (!String(form.name ?? '').trim()) {
+    e.name = 'Name is required'
+    bad = true
+  }
+  if (!String(form.email ?? '').trim()) {
+    e.email = 'Email is required'
+    bad = true
+  } else if (!isValidEmailFormat(form.email)) {
+    e.email = 'Enter a valid email address'
+    bad = true
+  }
+
+  const phoneTrim = String(form.phone ?? '').trim()
+  if (!phoneTrim) {
+    e.phone = 'Phone Number is required'
+    bad = true
+  } else if (!isValidPhoneValue(form.phone)) {
+    e.phone = PHONE_VALIDATION_MESSAGE
+    bad = true
+  }
+
+  if (!String(form.propertyDetails ?? '').trim()) {
+    e.propertyDetails = 'Property details are required'
+    bad = true
+  }
+
+  return bad ? e : null
+}
+
+const errClass = 'text-xs text-red-600 mt-1'
+
 export function SellPage() {
   const [status, setStatus] = useState('idle')
   const [form, setForm] = useState({ name: '', email: '', phone: '', propertyDetails: '' })
+  const [fieldErrors, setFieldErrors] = useState(emptySellErrors)
 
-  const canSubmit = useMemo(
-    () =>
-      Boolean(
-        form.name.trim() &&
-        form.email.trim() &&
-        form.phone.trim() &&
-        form.propertyDetails.trim()
-      ) && status !== 'loading',
-    [form, status]
-  )
+  const clearError = (field) => {
+    setFieldErrors((prev) => ({ ...prev, [field]: '' }))
+  }
 
   async function submit(e) {
     e.preventDefault()
-    if (!canSubmit) return
+    if (status === 'loading') return
+
+    const nextErrors = validateSellForm(form)
+    if (nextErrors) {
+      setFieldErrors(nextErrors)
+      return
+    }
+
+    setFieldErrors(emptySellErrors())
     setStatus('loading')
 
     const sellPayload = sanitizePayload({
@@ -40,41 +92,34 @@ export function SellPage() {
       sheetName: 'Sell Your Property',
     })
 
-    const promise = fetch(`${import.meta.env.VITE_API_BASE_URL}/api/contact`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(sellPayload),
-    }).then(async (response) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sellPayload),
+      })
+
       if (!response.ok) {
-        let apiError = 'Failed to submit'
+        let apiError = ''
         try {
           const errJson = await response.json()
-          apiError = errJson?.error || errJson?.message || apiError
+          apiError = (errJson?.error || errJson?.message || '').trim()
         } catch (_) {
-          // keep default message
+          /* ignore */
         }
-        throw new Error(apiError)
+        throw new Error(apiError || 'Unable to submit. Please try again.')
       }
-      return response
-    })
 
-    promise
-      .then(() => {
-        toast.success('Valuation Requested')
-      })
-      .catch(() => {
-        toast.error('Error - Try Again')
-      })
-
-    try {
-      await promise
+      toast.success('Valuation Requested')
       setStatus('success')
       setForm({ name: '', email: '', phone: '', propertyDetails: '' })
     } catch (err) {
       console.error(err)
       setStatus('error')
+      const msg = typeof err?.message === 'string' ? err.message.trim() : ''
+      toast.error(msg || 'Unable to submit. Please try again.')
     } finally {
       setTimeout(() => setStatus('idle'), 2500)
     }
@@ -155,53 +200,87 @@ export function SellPage() {
           {/* Right Column - Sell Form */}
           <div className="sell-section__right">
             <div className="sell-section__form-card">
-              <form onSubmit={submit} className="space-y-4">
+              <form onSubmit={submit} className="space-y-4" noValidate>
                 <div className="space-y-3">
-                  <input
-                    value={form.name}
-                    onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
-                    placeholder="Full name"
-                    className="sell-section__input"
-                    required
-                  />
-                  <input
-                    value={form.email}
-                    onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                    placeholder="Email address"
-                    type="email"
-                    className="sell-section__input"
-                    required
-                  />
-                  <input
-                    value={form.phone}
-                    onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-                    placeholder="Phone number"
-                    type="tel"
-                    className="sell-section__input"
-                    required
-                  />
-                  <textarea
-                    value={form.propertyDetails}
-                    onChange={(e) => setForm((s) => ({ ...s, propertyDetails: e.target.value }))}
-                    placeholder="Property details (location, size, features, etc.)"
-                    rows={4}
-                    className="sell-section__input sell-section__textarea"
-                    required
-                  />
+                  <div className="space-y-1">
+                    <input
+                      value={form.name}
+                      onChange={(e) => {
+                        clearError('name')
+                        setForm((s) => ({ ...s, name: e.target.value }))
+                      }}
+                      placeholder="Full name"
+                      className="sell-section__input"
+                      aria-invalid={Boolean(fieldErrors.name)}
+                    />
+                    {fieldErrors.name ? <p className={errClass}>{fieldErrors.name}</p> : null}
+                  </div>
+                  <div className="space-y-1">
+                    <input
+                      value={form.email}
+                      onChange={(e) => {
+                        clearError('email')
+                        setForm((s) => ({ ...s, email: e.target.value }))
+                      }}
+                      placeholder="Email address"
+                      type="email"
+                      className="sell-section__input"
+                      aria-invalid={Boolean(fieldErrors.email)}
+                    />
+                    {fieldErrors.email ? <p className={errClass}>{fieldErrors.email}</p> : null}
+                  </div>
+                  <div className="space-y-1">
+                    <input
+                      value={form.phone}
+                      onChange={(e) => {
+                        clearError('phone')
+                        setForm((s) => ({ ...s, phone: sanitizePhoneInputValue(e.target.value) }))
+                      }}
+                      onPaste={(e) => {
+                        clearError('phone')
+                        handlePhonePaste(e, (next) => setForm((s) => ({ ...s, phone: next })))
+                      }}
+                      placeholder="Phone number"
+                      type="tel"
+                      className="sell-section__input"
+                      maxLength={20}
+                      pattern={PHONE_PATTERN_ATTR}
+                      title={PHONE_VALIDATION_MESSAGE}
+                      aria-invalid={Boolean(fieldErrors.phone)}
+                    />
+                    {fieldErrors.phone ? <p className={errClass}>{fieldErrors.phone}</p> : null}
+                  </div>
+                  <div className="space-y-1">
+                    <textarea
+                      value={form.propertyDetails}
+                      onChange={(e) => {
+                        clearError('propertyDetails')
+                        setForm((s) => ({ ...s, propertyDetails: e.target.value }))
+                      }}
+                      placeholder="Property details (location, size, features, etc.)"
+                      rows={4}
+                      className="sell-section__input sell-section__textarea"
+                      aria-invalid={Boolean(fieldErrors.propertyDetails)}
+                    />
+                    {fieldErrors.propertyDetails ? (
+                      <p className={errClass}>{fieldErrors.propertyDetails}</p>
+                    ) : null}
+                  </div>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={!canSubmit}
-                  className="sell-section__button"
+                  disabled={status === 'loading'}
+                  className="sell-section__button disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {status === 'loading' ? (
                     <span className="flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Processing...
                     </span>
-                  ) : 'Get Free Property Valuation'
-                  }
+                  ) : (
+                    'Get Free Property Valuation'
+                  )}
                 </button>
               </form>
             </div>
@@ -211,4 +290,3 @@ export function SellPage() {
     </div>
   )
 }
-

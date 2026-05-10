@@ -41,7 +41,18 @@ export const normalizeFieldNames = (payload) => {
 export const filterPayloadBySheet = (payload, sheetName) => {
   const allowedFieldsBySheet = {
     Contact: ['name', 'phone', 'email', 'message'],
-    'Schedule a visit': ['name', 'email', 'phone', 'message', 'date', 'time'],
+    'Schedule a visit': [
+      'name',
+      'email',
+      'phone',
+      'message',
+      'date',
+      'time',
+      'propertyId',
+      'propertyName',
+      'propertyLocation',
+      'propertyType',
+    ],
     'Sell Your Property': ['name', 'email', 'phone', 'propertyDetails'],
     'Brochure Leads': ['name', 'phone'],
   }

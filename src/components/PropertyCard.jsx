@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { formatPrice } from '../data/properties'
+import { formatPropertyDisplayPrice } from '../data/properties'
 
 function formatWholeNumber(value) {
   if (value == null || value === '') return null
@@ -40,7 +40,7 @@ export function PropertyCard({ property }) {
     sqft ? `${sqft} sqft` : null,
     acres ? `${acres} acres` : null,
   ].filter(Boolean)
-  const displayPrice = withRupeePrefix(formatPrice(property.price, property.currency), property.currency)
+  const displayPrice = withRupeePrefix(formatPropertyDisplayPrice(property), property.currency)
 
   return (
     <Link

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
-import { formatPrice } from '../data/properties'
+import { formatPropertyDisplayPrice } from '../data/properties'
 
 const ADMIN_TOAST_KEY = 'adminToast'
 
@@ -183,7 +183,7 @@ export function AdminPropertyListPage() {
                       </td>
                       <td className="px-5 py-4 text-slate-800">{p.location || '—'}</td>
                       <td className="px-5 py-4 text-base font-semibold tabular-nums text-slate-900">
-                        {formatPrice(p.price, p.currency || 'INR')}
+                        {formatPropertyDisplayPrice(p, p.currency || 'INR')}
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex flex-wrap items-center justify-end gap-2">

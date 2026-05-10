@@ -316,3 +316,33 @@ export function formatPrice(value, currency = 'INR') {
   }
 }
 
+function hasDisplayablePrice(value) {
+  if (value == null) return false
+  if (typeof value === 'number') return Number.isFinite(value) && value > 0
+
+  const raw = String(value).trim()
+  if (!raw) return false
+
+  const parsed = parsePriceToNumber(raw)
+  if (Number.isFinite(parsed)) return parsed > 0
+
+  const numericMatch = raw.replace(/,/g, '').match(/(\d+(?:\.\d+)?)/)
+  if (numericMatch) return Number(numericMatch[1]) > 0
+
+  return false
+}
+
+export function formatPropertyDisplayPrice(property, currencyFallback = 'INR') {
+  const minExists = hasDisplayablePrice(property?.minPrice)
+  const maxExists = hasDisplayablePrice(property?.maxPrice)
+  const currency = property?.currency || currencyFallback
+
+  if (minExists && maxExists) {
+    return `${formatPrice(property.minPrice, currency)} – ${formatPrice(property.maxPrice, currency)}`
+  }
+  if (minExists) return formatPrice(property.minPrice, currency)
+  if (maxExists) return formatPrice(property.maxPrice, currency)
+  if (hasDisplayablePrice(property?.price)) return formatPrice(property.price, currency)
+  return '—'
+}
+

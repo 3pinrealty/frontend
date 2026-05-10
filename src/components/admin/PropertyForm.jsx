@@ -51,9 +51,22 @@ function numToInput(v) {
   return Number.isFinite(n) ? String(n) : ''
 }
 
+function positiveNumToInput(v) {
+  if (v == null || v === '') return ''
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? String(n) : ''
+}
+
 function textToInput(v) {
   if (v == null) return ''
   return String(v).trim()
+}
+
+function normalizePositiveNumericField(v) {
+  const raw = String(v ?? '').trim()
+  if (!raw) return ''
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? raw : ''
 }
 
 function hasPriceNumberAndText(v) {
@@ -104,14 +117,14 @@ function propertyToFormState(p) {
     bedrooms: numToInput(row.bedrooms),
     bathrooms: numToInput(row.bathrooms),
     area: textToInput(row.area),
-    areaSqftMin: numToInput(row.areaSqftMin),
-    areaSqftMax: numToInput(row.areaSqftMax),
+    areaSqftMin: positiveNumToInput(row.areaSqftMin),
+    areaSqftMax: positiveNumToInput(row.areaSqftMax),
     landAreaAcres: numToInput(row.landAreaAcres),
     type: row.type ?? '',
     builder: row.builder ?? '',
     unitsCount: numToInput(row.unitsCount),
-    pricePerSqftMin: numToInput(row.pricePerSqftMin),
-    pricePerSqftMax: numToInput(row.pricePerSqftMax),
+    pricePerSqftMin: positiveNumToInput(row.pricePerSqftMin),
+    pricePerSqftMax: positiveNumToInput(row.pricePerSqftMax),
     structure: row.structure ?? '',
     towerCount: numToInput(row.towerCount),
     deliveryDate,
@@ -134,8 +147,9 @@ function propertyToFormState(p) {
 function appendPayload(fd, form) {
   fd.append('title', form.title.trim())
   fd.append('price', String(form.price))
-  if (form.minPrice) fd.append('minPrice', String(form.minPrice))
-  if (form.maxPrice) fd.append('maxPrice', String(form.maxPrice))
+  // Always send optional range fields so clearing in admin overwrites stale DB values.
+  fd.append('minPrice', String(form.minPrice ?? '').trim())
+  fd.append('maxPrice', String(form.maxPrice ?? '').trim())
   fd.append('currency', form.currency.trim() || 'INR')
   fd.append('paymentPlan', form.paymentPlan.trim())
   fd.append('location', form.location.trim())
@@ -144,14 +158,15 @@ function appendPayload(fd, form) {
   if (form.bedrooms !== '') fd.append('bedrooms', String(form.bedrooms))
   if (form.bathrooms !== '') fd.append('bathrooms', String(form.bathrooms))
   if (form.area) fd.append('area', String(form.area))
-  if (form.areaSqftMin) fd.append('areaSqftMin', String(form.areaSqftMin))
-  if (form.areaSqftMax) fd.append('areaSqftMax', String(form.areaSqftMax))
+  // Always send optional range fields so clearing overwrites old DB values.
+  fd.append('areaSqftMin', normalizePositiveNumericField(form.areaSqftMin))
+  fd.append('areaSqftMax', normalizePositiveNumericField(form.areaSqftMax))
   if (form.landAreaAcres) fd.append('landAreaAcres', String(form.landAreaAcres))
   if (form.type) fd.append('type', form.type.trim())
   fd.append('builder', form.builder.trim())
   if (form.unitsCount) fd.append('unitsCount', String(form.unitsCount))
-  if (form.pricePerSqftMin) fd.append('pricePerSqftMin', String(form.pricePerSqftMin))
-  if (form.pricePerSqftMax) fd.append('pricePerSqftMax', String(form.pricePerSqftMax))
+  fd.append('pricePerSqftMin', normalizePositiveNumericField(form.pricePerSqftMin))
+  fd.append('pricePerSqftMax', normalizePositiveNumericField(form.pricePerSqftMax))
   fd.append('structure', form.structure.trim())
   if (form.towerCount) fd.append('towerCount', String(form.towerCount))
   if (form.deliveryDate) fd.append('deliveryDate', form.deliveryDate)

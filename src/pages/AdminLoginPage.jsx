@@ -5,14 +5,27 @@ const DUMMY_EMAIL = 'admin@3pin.com'
 const DUMMY_PASSWORD = 'Admin@123'
 const STORAGE_KEY = 'adminAuthed'
 
+const fieldErrClass = 'text-xs font-medium text-rose-600 mt-1'
+
 export function AdminLoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' })
 
   function handleSubmit(e) {
     e.preventDefault()
+    const fe = { email: '', password: '' }
+    if (!email.trim()) fe.email = 'Email is required'
+    if (!password) fe.password = 'Password is required'
+    if (fe.email || fe.password) {
+      setFieldErrors(fe)
+      setError('')
+      return
+    }
+    setFieldErrors({ email: '', password: '' })
+
     if (email.trim() === DUMMY_EMAIL && password === DUMMY_PASSWORD) {
       window.localStorage.setItem(STORAGE_KEY, '1')
       setError('')
@@ -58,7 +71,7 @@ export function AdminLoginPage() {
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-3" noValidate>
         <div className="space-y-2">
           <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
             Email
@@ -66,11 +79,15 @@ export function AdminLoginPage() {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setFieldErrors((s) => ({ ...s, email: '' }))
+              setEmail(e.target.value)
+            }}
             placeholder="you@example.com"
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15"
-            required
+            aria-invalid={Boolean(fieldErrors.email)}
           />
+          {fieldErrors.email ? <p className={fieldErrClass}>{fieldErrors.email}</p> : null}
         </div>
 
         <div className="space-y-2">
@@ -80,11 +97,15 @@ export function AdminLoginPage() {
           <input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setFieldErrors((s) => ({ ...s, password: '' }))
+              setPassword(e.target.value)
+            }}
             placeholder="Enter your password"
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-500/15"
-            required
+            aria-invalid={Boolean(fieldErrors.password)}
           />
+          {fieldErrors.password ? <p className={fieldErrClass}>{fieldErrors.password}</p> : null}
         </div>
 
         <div className="flex items-center justify-between text-xs">

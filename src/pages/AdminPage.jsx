@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { properties as baseProperties, formatPrice } from '../data/properties'
+import { properties as baseProperties, formatPropertyDisplayPrice } from '../data/properties'
 
 const LEAD_STATUSES = ['new', 'contacted', 'visit scheduled', 'closed']
 const TASK_TYPES = ['call customer', 'schedule visit', 'follow up']
@@ -256,7 +256,7 @@ export function AdminPage() {
                     </td>
                     <td className="px-4 py-3 text-slate-700">{p.location}</td>
                     <td className="px-4 py-3 font-semibold text-slate-900">
-                      {formatPrice(p.price ?? 0, p.currency || 'INR')}
+                      {formatPropertyDisplayPrice(p, p.currency || 'INR')}
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-700">{p.type}</td>
                     <td className="px-4 py-3 text-right">
