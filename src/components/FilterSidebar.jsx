@@ -112,7 +112,6 @@ function NumberRangeInput({ minValue, maxValue, onMinChange, onMaxChange }) {
             </option>
           ))}
         </select>
-        <span className="text-[var(--color-neutral-400)] text-xs">–</span>
         <select
           value={maxSelectValue}
           onChange={(e) => {
