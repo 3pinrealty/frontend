@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 
-const DUMMY_EMAIL = 'admin@3pin.com'
-const DUMMY_PASSWORD = 'Admin@123'
+const DUMMY_EMAIL = 'Admin@threepin.in' || 'admin@threepin.in'
+const DUMMY_PASSWORD = '3pin@administrator2026'
 const STORAGE_KEY = 'adminAuthed'
 
 const fieldErrClass = 'text-xs font-medium text-rose-600 mt-1'

@@ -106,12 +106,12 @@ export function BaseLayout() {
 
                 {/* Right Side Actions */}
                 <div className="flex items-center gap-4">
-                  <NavLink
+                  {/* <NavLink
                     to="/admin/login"
                     className="header-cta hidden md:inline-flex"
                   >
                     ADMIN
-                  </NavLink>
+                  </NavLink> */}
 
                   {/* Mobile Menu Button */}
                   <Disclosure.Button className="header-mobile-btn lg:hidden p-2 text-[var(--color-primary)] hover:text-[var(--color-accent)] transition rounded-sm">
@@ -130,12 +130,12 @@ export function BaseLayout() {
                     {item.label}
                   </NavItem>
                 ))}
-                <NavLink
+                {/* <NavLink
                   to="/admin/login"
                   className="header-mobile-cta"
                 >
                   ADMIN
-                </NavLink>
+                </NavLink> */}
               </nav>
             </Disclosure.Panel>
           </>
