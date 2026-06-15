@@ -16,6 +16,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { ContactForm } from '../components/ContactForm'
 import { ImageCarousel } from '../components/ImageCarousel'
+import { PropertyImageLightbox } from '../components/PropertyImageLightbox'
+import { PropertyDescription } from '../components/PropertyDescription'
 import { WhatsAppButton } from '../components/WhatsAppButton'
 import { formatPropertyDisplayPrice } from '../data/properties'
 import { api, normalizeProperty } from '../services/api'
@@ -109,6 +111,8 @@ export function PropertyPage() {
   const [property, setProperty] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  const [imageIndex, setImageIndex] = useState(0)
   const [brochureOpen, setBrochureOpen] = useState(false)
   const [brochureName, setBrochureName] = useState('')
   const [brochureMobile, setBrochureMobile] = useState('')
@@ -132,6 +136,10 @@ export function PropertyPage() {
         setProperty(null)
       })
       .finally(() => setLoading(false))
+  }, [id])
+
+  useEffect(() => {
+    setImageIndex(0)
   }, [id])
 
   const completionDateLabel = property?.deliveryDate
@@ -169,6 +177,15 @@ export function PropertyPage() {
 
   const scrollToSchedule = () => {
     scrollToSection('property-schedule')
+  }
+
+  const openGalleryAt = (nextIndex) => {
+    setImageIndex(Number.isFinite(nextIndex) ? nextIndex : 0)
+    setGalleryOpen(true)
+  }
+
+  const closeGallery = () => {
+    setGalleryOpen(false)
   }
 
   const openBrochureModal = () => {
@@ -359,6 +376,9 @@ export function PropertyPage() {
             cashbackEligible={property.cashbackEligible}
             launchStatus={property.launchStatus}
             onBookSiteVisit={scrollToSchedule}
+            onOpenGallery={openGalleryAt}
+            index={imageIndex}
+            onIndexChange={setImageIndex}
           />
         </section>
 
@@ -422,7 +442,7 @@ export function PropertyPage() {
             {property.description ? (
               <section className="property-page-section__panel p-6 sm:p-8">
                 <h2 className="font-serif text-xl text-[var(--color-primary)] mb-4 card-title-rule">About this property</h2>
-                <p className="font-sans text-[15px] text-[var(--color-neutral-600)] leading-relaxed">{property.description}</p>
+                <PropertyDescription description={property.description} />
               </section>
             ) : null}
 
@@ -791,6 +811,15 @@ export function PropertyPage() {
           </div>
         </div>
       ) : null}
+
+      <PropertyImageLightbox
+        open={galleryOpen}
+        index={imageIndex}
+        images={property.images}
+        alt={property.title}
+        onClose={closeGallery}
+        onIndexChange={setImageIndex}
+      />
     </div>
   )
 }

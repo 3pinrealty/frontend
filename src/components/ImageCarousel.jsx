@@ -7,9 +7,20 @@ export function ImageCarousel({
   cashbackEligible = false,
   launchStatus = '',
   onBookSiteVisit,
+  onOpenGallery,
+  index: controlledIndex,
+  onIndexChange,
 }) {
   const safeImages = useMemo(() => (Array.isArray(images) ? images.filter(Boolean) : []), [images])
-  const [index, setIndex] = useState(0)
+  const [uncontrolledIndex, setUncontrolledIndex] = useState(0)
+  const isControlled = controlledIndex !== undefined
+  const index = isControlled ? controlledIndex : uncontrolledIndex
+
+  const setIndex = (next) => {
+    const resolved = typeof next === 'function' ? next(index) : next
+    if (!isControlled) setUncontrolledIndex(resolved)
+    if (typeof onIndexChange === 'function') onIndexChange(resolved)
+  }
 
   const hasImages = safeImages.length > 0
   const current = safeImages[index] || safeImages[0]
@@ -31,11 +42,26 @@ export function ImageCarousel({
   return (
     <div className="relative overflow-hidden bg-[var(--color-secondary)] border border-[var(--color-neutral-200)]">
       <div className="relative aspect-[16/10]">
-        <img
-          src={current}
-          alt={alt}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+        {typeof onOpenGallery === 'function' ? (
+          <button
+            type="button"
+            className="absolute inset-0 cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30"
+            aria-label="Open full screen gallery"
+            onClick={() => onOpenGallery(index)}
+          >
+            <img
+              src={current}
+              alt={alt}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </button>
+        ) : (
+          <img
+            src={current}
+            alt={alt}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        )}
 
         {/* Top-left badges */}
         {(cashbackEligible || launchStatus) && (
@@ -115,7 +141,10 @@ export function ImageCarousel({
             <button
               key={src}
               type="button"
-              onClick={() => setIndex(i)}
+              onClick={() => {
+                setIndex(i)
+                if (typeof onOpenGallery === 'function') onOpenGallery(i)
+              }}
               className={[
                 'relative w-16 h-12 flex-shrink-0 overflow-hidden transition',
                 i === index ? 'ring-2 ring-[var(--color-accent)]' : 'opacity-60 hover:opacity-100',
