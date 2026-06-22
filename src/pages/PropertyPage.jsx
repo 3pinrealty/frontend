@@ -3,10 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftIcon,
   MapPinIcon,
-  BuildingOffice2Icon,
-  AcademicCapIcon,
-  HeartIcon,
-  TruckIcon,
   PhoneIcon,
   PlayIcon,
   DocumentArrowDownIcon,
@@ -29,6 +25,7 @@ import {
   sanitizePhoneInputValue,
 } from '../utils/phoneInput'
 import { toGoogleMapsEmbedUrl, toGoogleMapsOpenUrl } from '../utils/googleMapsEmbed'
+import { getLandmarkIcon } from '../utils/landmarkIcons'
 
 const WA_PHONE = '+919080895163'
 
@@ -486,9 +483,8 @@ export function PropertyPage() {
                   {property.nearbyLandmarks?.length > 0 ? (
                     <div className="lg:basis-[40%] lg:max-w-[40%] min-w-0">
                       <ul className="flex flex-col gap-2 rounded-xl border border-[var(--color-neutral-200)] bg-white p-2">
-                        {property.nearbyLandmarks.slice(0, 6).map((lm, idx) => {
-                          const iconSet = [TruckIcon, AcademicCapIcon, HeartIcon, BuildingOffice2Icon]
-                          const LandmarkIcon = iconSet[idx % iconSet.length]
+                        {property.nearbyLandmarks.slice(0, 6).map((lm) => {
+                          const LandmarkIcon = getLandmarkIcon(lm.name, lm.category)
                           return (
                             <li
                               key={lm.name + (lm.distance || '')}
